@@ -2,14 +2,34 @@ import { Router } from "express";
 import { toOfferDto } from "../mappers/offer.mapper.ts";
 import { getCurrentUser } from "../middlewares/authenticate.ts";
 import { authorize } from "../middlewares/authorize.ts";
+import type { PeriodCode } from "../models/offer.ts";
 import type { OffersService } from "../services/offers.service.ts";
 import { canListOffers } from "../services/permissions.ts";
+import { HttpError } from "../utils/httpError.ts";
+
+type PeriodQueryValue = "P1" | "P2" | "Autre";
+
+const isPeriodQueryValue = (value: unknown): value is PeriodQueryValue =>
+  typeof value === "string" && (value === "P1" || value === "P2" || value === "Autre");
+
+const parsePeriod = (value: unknown): PeriodCode | undefined => {
+  if (value === undefined) return undefined;
+  if (!isPeriodQueryValue(value)) {
+    throw new HttpError(
+      400,
+      "INVALID_QUERY",
+      "Le paramètre period doit être P1, P2 ou Autre et apparaître une seule fois",
+    );
+  }
+  return value === "Autre" ? "OTHER" : value;
+};
 
 export const createOffersRouter = (offersService: OffersService) => {
   const router = Router();
 
   router.get("/", authorize(canListOffers), (req, res) => {
-    res.json(offersService.listOffers(getCurrentUser(req)).map(toOfferDto));
+    const period = parsePeriod(req.query.period);
+    res.json(offersService.listOffers(getCurrentUser(req), period).map(toOfferDto));
   });
 
   return router;

@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Parcours d'affichage des offres de stage, de React à SQLite, et fichiers à adapter pour filtrer par période."
+    >
+    <title>Parcours d'affichage des offres — Gesta</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, "Segoe UI", sans-serif;
+        color: #172033;
+        background: #f3f6fb;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --blue: #2457a7;
+        --line: #d8e0ec;
+        --muted: #526078;
+        --panel: #fff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+        line-height: 1.6;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+        font-size: clamp(2rem, 5vw, 3rem);
+      }
+
+      h2 {
+        margin-top: 0;
+        font-size: 1.55rem;
+      }
+
+      h3 {
+        margin-bottom: 8px;
+      }
+
+      a {
+        color: var(--blue);
+        overflow-wrap: anywhere;
+      }
+
+      code {
+        padding: 2px 5px;
+        border-radius: 4px;
+        background: #edf2fa;
+        font-size: 0.93em;
+      }
+
+      .intro,
+      .panel,
+      .stage {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+      }
+
+      .intro {
+        margin: 24px 0;
+        padding: 22px 26px;
+        border-left: 5px solid var(--blue);
+      }
+
+      .intro p,
+      .panel p {
+        margin-bottom: 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .panel {
+        margin-top: 22px;
+        padding: 24px;
+      }
+
+      .flow {
+        display: grid;
+        gap: 12px;
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .stage {
+        position: relative;
+        padding: 16px 18px 16px 58px;
+      }
+
+      .stage:not(:last-child)::after {
+        position: absolute;
+        bottom: -17px;
+        left: 28px;
+        z-index: 1;
+        color: var(--blue);
+        content: "↓";
+        font-size: 1.35rem;
+        font-weight: 700;
+      }
+
+      .stage-number {
+        position: absolute;
+        top: 17px;
+        left: 17px;
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 50%;
+        background: #e7effc;
+        color: var(--blue);
+        font-weight: 700;
+      }
+
+      .stage p {
+        margin: 0;
+      }
+
+      .stage h3 {
+        margin-top: 0;
+      }
+
+      .files {
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+
+      .files li + li {
+        margin-top: 4px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f6f8fc;
+      }
+
+      .callout {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-radius: 8px;
+        background: #edf4ff;
+      }
+
+      footer {
+        margin-top: 24px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="muted">Gesta · architecture applicative</p>
+      <h1>Du composant React à SQLite : afficher les offres</h1>
+      <p class="muted">
+        Parcours de la requête <code>GET /offers</code>, responsabilités des couches et
+        fichiers à prévoir pour ajouter un filtre par période.
+      </p>
+    </header>
+
+    <section class="intro" aria-labelledby="architecture-title">
+      <h2 id="architecture-title">Architecture en bref</h2>
+      <p>
+        Gesta est une application en npm workspaces composée d'un frontend React/TypeScript
+        avec Vite et d'une API Express/TypeScript avec SQLite. Le frontend organise
+        l'affichage autour des pages, hooks, services, modèles et composants. Le backend
+        sépare HTTP (contrôleurs), règles métier (services), accès SQL (repositories) et
+        conversion des données (mappers). <code>createApp</code> assemble les dépendances;
+        la même application peut ainsi être testée avec une base SQLite en mémoire.
+      </p>
+    </section>
+
+    <main>
+      <section class="panel" aria-labelledby="flow-title">
+        <h2 id="flow-title">Parcours complet d'une liste</h2>
+        <ol class="flow">
+          <li class="stage">
+            <span class="stage-number">1</span>
+            <h3>Route et session côté React</h3>
+            <p>
+              <code>App</code> appelle <code>useAuth</code>, puis n'affiche la route
+              <code>/offres</code> que si l'utilisateur est connecté et que
+              <code>canListOffers</code> l'autorise. La page reçoit l'utilisateur, le jeton
+              et le rappel de déconnexion en cas de session expirée.
+            </p>
+            <ul class="files">
+              <li><a href="../frontend/src/App.tsx"><code>frontend/src/App.tsx</code></a></li>
+              <li><a href="../frontend/src/hooks/useAuth.ts"><code>frontend/src/hooks/useAuth.ts</code></a></li>
+              <li><a href="../frontend/src/utils/permissions.ts"><code>frontend/src/utils/permissions.ts</code></a></li>
+            </ul>
+          </li>
+          <li class="stage">
+            <span class="stage-number">2</span>
+            <h3>Page et état de chargement</h3>
+            <p>
+              <code>OffersPage</code> appelle <code>useOffers(token, onUnauthorized)</code>.
+              Elle rend l'état d'erreur, de chargement, la liste vide ou le nombre de
+              résultats et le tableau.
+            </p>
+            <ul class="files">
+              <li><a href="../frontend/src/pages/OffersPage.tsx"><code>frontend/src/pages/OffersPage.tsx</code></a></li>
+              <li><a href="../frontend/src/hooks/useOffers.ts"><code>frontend/src/hooks/useOffers.ts</code></a></li>
+            </ul>
+          </li>
+          <li class="stage">
+            <span class="stage-number">3</span>
+            <h3>Appel HTTP et proxy Vite</h3>
+            <p>
+              Le hook lance <code>getOffers</code> avec un <code>AbortSignal</code>. Le
+              service envoie le jeton directement dans l'en-tête
+              <code>Authorization</code> et appelle <code>/api/offers</code>. En
+              développement, Vite transmet la requête à l'API (port <code>API_PORT</code>,
+              3000 par défaut) en supprimant le préfixe <code>/api</code>.
+            </p>
+            <ul class="files">
+              <li><a href="../frontend/src/services/offers.service.ts"><code>frontend/src/services/offers.service.ts</code></a></li>
+              <li><a href="../frontend/src/utils/api.ts"><code>frontend/src/utils/api.ts</code></a></li>
+              <li><a href="../frontend/vite.config.ts"><code>frontend/vite.config.ts</code></a></li>
+            </ul>
+          </li>
+          <li class="stage">
+            <span class="stage-number">4</span>
+            <h3>Initialisation de l'API et middleware</h3>
+            <p>
+              <code>main.ts</code> charge la configuration, initialise SQLite et démarre
+              Express. <code>app.ts</code> monte la route des offres derrière
+              <code>authenticate</code>. L'identité du jeton est vérifiée, puis le compte,
+              ses rôles et ses entreprises sont relus en base; <code>authorize</code>
+              refuse l'accès des profils non autorisés (403).
+            </p>
+            <ul class="files">
+              <li><a href="../backend/src/main.ts"><code>backend/src/main.ts</code></a></li>
+              <li><a href="../backend/src/app.ts"><code>backend/src/app.ts</code></a></li>
+              <li><a href="../backend/src/middlewares/authenticate.ts"><code>backend/src/middlewares/authenticate.ts</code></a></li>
+              <li><a href="../backend/src/middlewares/authorize.ts"><code>backend/src/middlewares/authorize.ts</code></a></li>
+            </ul>
+          </li>
+          <li class="stage">
+            <span class="stage-number">5</span>
+            <h3>Contrôleur et visibilité métier</h3>
+            <p>
+              Le contrôleur <code>GET /offers</code> récupère l'utilisateur authentifié,
+              appelle le service puis convertit les résultats en DTO JSON. Le service
+              applique les règles par profil : toutes les offres pour l'administrateur,
+              les offres publiées pour l'étudiant, celles déposées par le contact déposant;
+              un contact sans rôle de déposant reçoit 403.
+            </p>
+            <ul class="files">
+              <li><a href="../backend/src/controllers/offers.controller.ts"><code>backend/src/controllers/offers.controller.ts</code></a></li>
+              <li><a href="../backend/src/services/offers.service.ts"><code>backend/src/services/offers.service.ts</code></a></li>
+              <li><a href="../backend/src/services/permissions.ts"><code>backend/src/services/permissions.ts</code></a></li>
+            </ul>
+          </li>
+          <li class="stage">
+            <span class="stage-number">6</span>
+            <h3>SQL, jointures et conversion</h3>
+            <p>
+              Le repository sélectionne les offres en joignant les entreprises, années
+              académiques et périodes. Il applique les filtres métier transmis par le
+              service, puis trie par année académique décroissante et date de création
+              décroissante. Le mapper convertit la ligne SQL (<code>OfferDbo</code>) en
+              objet métier, puis en DTO limité aux champs exposés par l'API.
+            </p>
+            <ul class="files">
+              <li><a href="../backend/src/repositories/offers.repository.ts"><code>backend/src/repositories/offers.repository.ts</code></a></li>
+              <li><a href="../backend/src/mappers/offer.mapper.ts"><code>backend/src/mappers/offer.mapper.ts</code></a></li>
+              <li><a href="../backend/src/models/offer.ts"><code>backend/src/models/offer.ts</code></a></li>
+              <li><a href="../backend/src/db/migrations/001_initial.sql"><code>backend/src/db/migrations/001_initial.sql</code></a></li>
+            </ul>
+          </li>
+          <li class="stage">
+            <span class="stage-number">7</span>
+            <h3>Validation de la réponse et rendu</h3>
+            <p>
+              Le service frontend vérifie le statut HTTP et valide le JSON avec
+              <code>isOfferList</code>. Le hook alimente l'état de la page ou déclenche la
+              déconnexion sur 401. Enfin, <code>OfferTable</code> affiche titre, entreprise,
+              année, période et statut; les codes sont traduits par les libellés frontend.
+            </p>
+            <ul class="files">
+              <li><a href="../frontend/src/utils/guards.ts"><code>frontend/src/utils/guards.ts</code></a></li>
+              <li><a href="../frontend/src/models/offer.ts"><code>frontend/src/models/offer.ts</code></a></li>
+              <li><a href="../frontend/src/components/OfferTable.tsx"><code>frontend/src/components/OfferTable.tsx</code></a></li>
+              <li><a href="../frontend/src/utils/labels.ts"><code>frontend/src/utils/labels.ts</code></a></li>
+            </ul>
+          </li>
+        </ol>
+      </section>
+
+      <section class="panel" aria-labelledby="filter-title">
+        <h2 id="filter-title">Ajouter un filtre par période</h2>
+        <p>
+          L'API renvoie déjà le code de période (<code>P1</code>, <code>P2</code> ou
+          <code>OTHER</code>) pour chaque offre, et le repository joint déjà la table
+          <code>periods</code>. Pour filtrer côté serveur sans contourner les droits
+          existants, transmettre un code facultatif dans la query, par exemple
+          <code>GET /offers?period=P2</code>. La visibilité du profil et la période doivent
+          se combiner par intersection.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fichier</th>
+                <th>Évolution à prévoir</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="../frontend/src/pages/OffersPage.tsx"><code>frontend/src/pages/OffersPage.tsx</code></a></td>
+                <td>Ajouter le contrôle de période et gérer la valeur sélectionnée; transmettre la sélection au hook.</td>
+              </tr>
+              <tr>
+                <td><a href="../frontend/src/hooks/useOffers.ts"><code>frontend/src/hooks/useOffers.ts</code></a></td>
+                <td>Accepter la période sélectionnée, déclencher le chargement lorsque celle-ci change et conserver les états de chargement/erreur.</td>
+              </tr>
+              <tr>
+                <td><a href="../frontend/src/services/offers.service.ts"><code>frontend/src/services/offers.service.ts</code></a></td>
+                <td>Ajouter la période à l'URL comme paramètre de query (et omettre le paramètre lorsqu'aucun filtre n'est sélectionné).</td>
+              </tr>
+              <tr>
+                <td><a href="../backend/src/controllers/offers.controller.ts"><code>backend/src/controllers/offers.controller.ts</code></a></td>
+                <td>Lire et valider le paramètre unique <code>period</code>; rejeter une valeur inconnue avec l'erreur de requête standard (400), puis transmettre le filtre au service.</td>
+              </tr>
+              <tr>
+                <td><a href="../backend/src/services/offers.service.ts"><code>backend/src/services/offers.service.ts</code></a></td>
+                <td>Combiner le filtre choisi avec les contraintes de visibilité du profil; ne jamais remplacer le filtre de droits par la sélection utilisateur.</td>
+              </tr>
+              <tr>
+                <td><a href="../backend/src/repositories/offers.repository.ts"><code>backend/src/repositories/offers.repository.ts</code></a></td>
+                <td>Étendre <code>OfferFilter</code> et les paramètres SQL; filtrer par le code de période joint (par exemple <code>p.code</code>).</td>
+              </tr>
+              <tr>
+                <td><a href="../backend/tests/offers.test.ts"><code>backend/tests/offers.test.ts</code></a></td>
+                <td>Tester les périodes valides, les périodes sans résultat et la combinaison du filtre avec les droits administrateur, étudiant et déposant; couvrir les paramètres invalides au niveau API.</td>
+              </tr>
+              <tr>
+                <td><a href="../frontend/tests/OffersPage.test.tsx"><code>frontend/tests/OffersPage.test.tsx</code></a></td>
+                <td>Vérifier le contrôle, l'URL ou le résultat filtré, ainsi que les états vides et le changement de période.</td>
+              </tr>
+              <tr>
+                <td><a href="../backend/API.md"><code>backend/API.md</code></a></td>
+                <td>Documenter le paramètre facultatif, les codes admis, son comportement et la réponse 400.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <aside class="callout">
+          <strong>Éléments déjà disponibles :</strong> <code>PeriodCode</code> et
+          <code>PERIOD_CODES</code> existent dans les modèles, les type guards valident déjà
+          la période retournée, et SQLite associe chaque offre à une période via les clés
+          étrangères. Aucun nouveau champ de réponse, changement de schéma ou migration
+          n'est nécessaire pour un filtre sur <code>P1</code>, <code>P2</code> et
+          <code>OTHER</code>. <code>OfferTable</code> peut rester inchangé si le filtre est
+          placé dans la page.
+        </aside>
+      </section>
+
+      <section class="panel" aria-labelledby="reference-title">
+        <h2 id="reference-title">Références du projet</h2>
+        <ul class="files">
+          <li><a href="architecture.md"><code>docs/architecture.md</code></a> — vue d'ensemble des couches et parcours existants.</li>
+          <li><a href="../backend/API.md"><code>backend/API.md</code></a> — contrat HTTP des offres.</li>
+          <li><a href="../backend/http/offers.http"><code>backend/http/offers.http</code></a> — requêtes REST Client de démonstration.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      Parcours basé sur le code actuellement présent dans le dépôt.
+    </footer>
+  </body>
+</html>
