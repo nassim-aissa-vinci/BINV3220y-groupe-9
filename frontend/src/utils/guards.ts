@@ -1,6 +1,11 @@
 import { COMPANY_STATUSES, type Company, type CompanyStatus } from "../models/company.ts";
 import type { Health } from "../models/health.ts";
-import { OFFER_STATUSES, PERIOD_CODES, type Offer } from "../models/offer.ts";
+import {
+  OFFER_STATUSES,
+  PERIOD_CODES,
+  type Offer,
+  type PeriodCode,
+} from "../models/offer.ts";
 import {
   CONTACT_ROLES,
   USER_KINDS,
@@ -14,6 +19,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isOneOf = <T extends string>(values: readonly T[], value: unknown): value is T =>
   typeof value === "string" && (values as readonly string[]).includes(value);
+
+export const isPeriodCode = (value: unknown): value is PeriodCode =>
+  isOneOf(PERIOD_CODES, value);
 
 export const isHealth = (value: unknown): value is Health =>
   isRecord(value) && value.status === "ok";
