@@ -3,12 +3,13 @@ import ErrorState from "./components/ErrorState.tsx";
 import Layout from "./components/Layout.tsx";
 import LoadingState from "./components/LoadingState.tsx";
 import { useAuth } from "./hooks/useAuth.ts";
+import ApplicationsPage from "./pages/ApplicationsPage.tsx";
 import CompaniesPage from "./pages/CompaniesPage.tsx";
 import HomePage from "./pages/HomePage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 import OffersPage from "./pages/OffersPage.tsx";
-import { canListOffers } from "./utils/permissions.ts";
+import { canListApplications, canListOffers } from "./utils/permissions.ts";
 
 const App = () => {
   const auth = useAuth();
@@ -27,6 +28,12 @@ const App = () => {
             element={
               <OffersPage user={auth.user} token={auth.token} onUnauthorized={auth.logout} />
             }
+          />
+        )}
+        {canListApplications(auth.user) && (
+          <Route
+            path="/mes-candidatures"
+            element={<ApplicationsPage token={auth.token} onUnauthorized={auth.logout} />}
           />
         )}
         <Route

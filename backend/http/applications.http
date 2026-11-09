@@ -1,0 +1,96 @@
+### Connexion de démo : étudiant Lucas
+# @name student
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "STUDENT", "id": 1 }
+
+### Connexion de démo : étudiant Dmytro (utilisé pour candidater sans message)
+# @name studentWithoutMessage
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "STUDENT", "id": 8 }
+
+### Connexion de démo : administratrice
+# @name admin
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "ADMIN", "id": 1 }
+
+### Connexion de démo : contact déposant Marc
+# @name depositor
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "CONTACT", "id": 2 }
+
+### Connexion de démo : étudiant Mateusz (candidature déjà retenue)
+# @name selectedStudent
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "STUDENT", "id": 3 }
+
+### Consulter les candidatures de l'étudiant connecté
+GET http://localhost:3000/applications/me
+Authorization: {{student.response.body.token}}
+
+### Candidater avec un message (offre publiée 5)
+POST http://localhost:3000/applications
+Authorization: {{student.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 5, "message": "Le sujet m'intéresse." }
+
+### Candidater sans message (offre publiée 5)
+POST http://localhost:3000/applications
+Authorization: {{studentWithoutMessage.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 5 }
+
+### Erreur 409 : doublon (à lancer après la candidature de Lucas ci-dessus)
+POST http://localhost:3000/applications
+Authorization: {{student.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 5, "message": "Nouvelle tentative" }
+
+### Erreur 409 : offre existante non publiée (offre soumise 2)
+POST http://localhost:3000/applications
+Authorization: {{student.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 2 }
+
+### Erreur 403 : candidature par un administrateur
+POST http://localhost:3000/applications
+Authorization: {{admin.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 5 }
+
+### Erreur 403 : candidature par un contact déposant
+POST http://localhost:3000/applications
+Authorization: {{depositor.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 5 }
+
+### Retrait OK : Lucas retire sa candidature en cours (id 1)
+PATCH http://localhost:3000/applications/1/withdraw
+Authorization: {{student.response.body.token}}
+
+### Erreur 409 : Mateusz tente de retirer sa candidature déjà retenue (id 3)
+PATCH http://localhost:3000/applications/3/withdraw
+Authorization: {{selectedStudent.response.body.token}}
+
+### Erreur 404 : Lucas tente de retirer la candidature d'Inès (id 2)
+PATCH http://localhost:3000/applications/2/withdraw
+Authorization: {{student.response.body.token}}
+
+### Erreur 403 : retrait par une administratrice
+PATCH http://localhost:3000/applications/1/withdraw
+Authorization: {{admin.response.body.token}}

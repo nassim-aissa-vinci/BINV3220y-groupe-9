@@ -8,7 +8,7 @@ type Responder = () => Response;
  * Chaque appel crée une nouvelle Response : son corps ne se lit qu'une fois.
  */
 export const stubFetch = (routes: Record<string, Responder>) => {
-  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+  const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input);
     const prefix = Object.keys(routes)
       .sort((a, b) => b.length - a.length)

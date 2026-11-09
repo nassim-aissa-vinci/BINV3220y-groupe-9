@@ -1,11 +1,12 @@
 import { useState } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import EmptyState from "../components/EmptyState.tsx";
 import ErrorState from "../components/ErrorState.tsx";
 import LoadingState from "../components/LoadingState.tsx";
 import OfferTable from "../components/OfferTable.tsx";
+import { useApplyToOffer } from "../hooks/useApplyToOffer.ts";
 import { useOffers } from "../hooks/useOffers.ts";
-import type { PeriodCode } from "../models/offer.ts";
+import type { Offer, PeriodCode } from "../models/offer.ts";
 import { isPeriodCode } from "../utils/guards.ts";
 import type { User } from "../models/user.ts";
 
@@ -24,10 +25,30 @@ const DESCRIPTIONS = {
 const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
   const [period, setPeriod] = useState<PeriodCode | undefined>();
   const { offers, isLoading, error } = useOffers(token, onUnauthorized, period);
+  const application = useApplyToOffer(token, onUnauthorized, user.kind === "STUDENT");
+  const {
+    selectedOfferId,
+    message,
+    error: applicationError,
+    notice: applicationNotice,
+    isSubmitting,
+    selectOffer,
+    setMessage,
+    submitApplication,
+    cancelApplication,
+  } = application;
+  const selectedOffer = offers.find((offer) => offer.id === selectedOfferId);
 
   const handlePeriodChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.currentTarget.value;
     setPeriod(isPeriodCode(value) ? value : undefined);
+  };
+
+  const handleApply = (offer: Offer) => selectOffer(offer.id);
+
+  const handleSubmitApplication = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void submitApplication(selectedOffer);
   };
 
   const renderContent = () => {
@@ -39,7 +60,32 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
         <p className="result-count">
           {offers.length} offre{offers.length > 1 ? "s" : ""}
         </p>
-        <OfferTable offers={offers} />
+        <OfferTable offers={offers} onApply={user.kind === "STUDENT" ? handleApply : undefined} />
+        {user.kind === "STUDENT" && selectedOffer?.status === "PUBLISHED" && (
+          <form className="application-form" onSubmit={handleSubmitApplication}>
+            <h2>Candidater à « {selectedOffer.title} »</h2>
+            <label htmlFor="application-message">Message (facultatif, 1000 caractères maximum)</label>
+            <textarea
+              id="application-message"
+              maxLength={1000}
+              value={message}
+              onChange={(event) => setMessage(event.currentTarget.value)}
+            />
+            {applicationError && <ErrorState message={applicationError} />}
+            <button className="button button-primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Envoi…" : "Envoyer ma candidature"}
+            </button>
+            <button
+              className="button"
+              type="button"
+              onClick={cancelApplication}
+              disabled={isSubmitting}
+            >
+              Annuler
+            </button>
+          </form>
+        )}
+        {applicationNotice && <p className="state state-success">{applicationNotice}</p>}
       </>
     );
   };

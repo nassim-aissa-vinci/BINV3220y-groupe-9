@@ -169,6 +169,22 @@ const insertInternship = (overrides: Record<string, unknown> = {}) =>
     });
 
 describe("candidatures et stages", () => {
+  it("refuse une deuxième candidature non retirée pour la même offre et le même étudiant", () => {
+    expect(() =>
+      db
+        .prepare("INSERT INTO applications (offer_id, student_id) VALUES (?, ?)")
+        .run(OFFER.FLEET_APP, STUDENT.LUCAS_DUPONT),
+    ).toThrow(/UNIQUE/);
+  });
+
+  it("autorise une nouvelle candidature après retrait", () => {
+    expect(() =>
+      db
+        .prepare("INSERT INTO applications (offer_id, student_id) VALUES (?, ?)")
+        .run(OFFER.BILLING_API, STUDENT.INES_HADDAD),
+    ).not.toThrow();
+  });
+
   it("accepte un stage valide, avec ou sans promoteur", () => {
     expect(() => insertInternship()).not.toThrow();
     expect(() => insertInternship({ promoter_contact_id: null })).not.toThrow();
