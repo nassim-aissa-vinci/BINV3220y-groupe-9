@@ -59,7 +59,7 @@ d'un autre étudiant).
 ## 3. Modifications
 
 Commits : `9bb1c1b` (candidater), `5549e21` (refactoring du formulaire), `b606d7e` (consulter),
-`e4917b8` (retirer).
+`e4917b8` (retirer), puis un commit de correction du lint.
 
 **Backend**
 - `db/migrations/002_applications_active_unique.sql` : index unique partiel
@@ -134,7 +134,7 @@ Faute de temps, seul le premier cas a été essayé dans le navigateur, et les r
 - **`npm run lint` échouait depuis l'étape 2** : `react(set-state-in-effect)` dans
   `hooks/useApplications.ts` (appels à `setIsLoading` et `setError` directement dans le `useEffect`).
   Copilot ne lançait que le typecheck et des tests ciblés, jamais le lint : seul `npm run check`
-  l'a révélé. **Non corrigé au moment du rendu.**
+  l'a révélé. Corrigé par une demande ciblée, sur le modèle de `useOffers` : l'état de chargement est désormais associé au token de la requête, sans appel synchrone à un setter dans l'effet.
 - Le typecheck a trouvé, à chaque étape, des erreurs de typage dans les tests écrits par Copilot,
   alors que ces tests passaient. Copilot les a corrigées.
 - Petite incohérence de nom : la règle s'appelle `canViewOwnApplications` dans le backend et
@@ -167,4 +167,4 @@ nom de l'étudiant connecté. On ne peut donc pas candidater à la place de quel
 - Par nous : `npm run test -w frontend` à chaque étape (en échec une fois à l'étape 2, voir § 2),
   `git diff --stat`.
 - `npm run check` final : typecheck réussi, **147 tests backend** et **67 tests frontend** réussis,
-  compilation réussie, mais **lint en échec** (voir § 5) : `npm run check` ne passe donc pas entièrement.
+  compilation réussie, mais **lint en échec** (voir § 5). Après correction, `npm run check` passe entièrement : lint, typecheck, tests et build.
