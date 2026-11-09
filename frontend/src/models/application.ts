@@ -1,3 +1,5 @@
+import type { PeriodCode } from "./offer.ts";
+
 export const APPLICATION_STATUSES = [
   "IN_PROGRESS",
   "SELECTED",
@@ -13,4 +15,11 @@ export interface Application {
   message: string | null;
   status: ApplicationStatus;
   appliedAt: string;
+}
+
+export interface ApplicationListItem extends Application {
+  offerTitle: string;
+  companyShortName: string;
+  academicYear: string;
+  period: PeriodCode;
 }

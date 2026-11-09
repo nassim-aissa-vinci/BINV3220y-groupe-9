@@ -206,3 +206,41 @@ sont supprimés, une valeur vide devient `null`, et le texte normalisé ne peut 
 - `409` `OFFER_NOT_PUBLISHED` : offre existante dont le statut n'est pas `PUBLISHED`
 - `409` `APPLICATION_EXISTS` : candidature déjà présente pour cet étudiant et cette offre
   avec un statut différent de `WITHDRAWN`
+
+## GET /applications/me
+
+Retourne toutes les candidatures de l'étudiant connecté, y compris celles retirées, de la
+plus récente à la plus ancienne. Les données sont filtrées à partir de la session; aucun
+identifiant étudiant n'est accepté dans l'URL ou les paramètres.
+
+### Requête
+
+- Header `Authorization` obligatoire
+- Aucun paramètre
+
+### Réponses
+
+- `200` : tableau de candidatures
+
+```json
+[
+  {
+    "id": 1,
+    "offerId": 1,
+    "offerTitle": "Application React de gestion de flotte",
+    "companyShortName": "Lumen Digital",
+    "academicYear": "2026-2027",
+    "period": "P2",
+    "message": "Le développement React m'intéresse particulièrement.",
+    "status": "IN_PROGRESS",
+    "appliedAt": "2026-10-02 18:10:00"
+  }
+]
+```
+
+`status` vaut `IN_PROGRESS`, `SELECTED`, `REJECTED` ou `WITHDRAWN`. `period` vaut `P1`,
+`P2` ou `OTHER`. Cette étape retourne les candidatures de toutes les années; le filtre
+par défaut sur l'année en cours (EF-72) reste à implémenter.
+
+- `401` `UNAUTHENTICATED` : session absente ou invalide
+- `403` `FORBIDDEN` : utilisateur connecté qui n'est pas étudiant

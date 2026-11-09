@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isApplicationList,
   isCompany,
   isCompanyList,
   isHealth,
@@ -99,5 +100,28 @@ describe("isOffer", () => {
     ["un titre absent", { ...offer, title: undefined }],
   ])("refuse %s", (_case, value) => {
     expect(isOffer(value)).toBe(false);
+  });
+});
+
+const application = {
+  id: 1,
+  offerId: 3,
+  offerTitle: "API REST de facturation",
+  companyShortName: "Orbis",
+  academicYear: "2026-2027",
+  period: "P2",
+  message: null,
+  status: "IN_PROGRESS",
+  appliedAt: "2026-10-04 14:50:00",
+};
+
+describe("isApplicationList", () => {
+  it("accepte une liste vide ou une candidature valide", () => {
+    expect(isApplicationList([])).toBe(true);
+    expect(isApplicationList([application])).toBe(true);
+  });
+
+  it("refuse une liste contenant une candidature mal formée", () => {
+    expect(isApplicationList([{ ...application, status: "UNKNOWN" }])).toBe(false);
   });
 });

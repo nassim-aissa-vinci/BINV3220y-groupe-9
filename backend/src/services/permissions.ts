@@ -9,6 +9,8 @@ export const isStudent = (user: User): boolean => user.kind === "STUDENT";
 
 export const canApplyToOffers = (user: User): boolean => isStudent(user);
 
+export const canViewOwnApplications = (user: User): boolean => isStudent(user);
+
 /** Les rôles d'un contact s'exercent dans toutes ses entreprises. */
 export const hasContactRole = (user: User, role: ContactRole): boolean =>
   user.kind === "CONTACT" && user.roles.includes(role);

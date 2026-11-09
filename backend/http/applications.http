@@ -26,6 +26,10 @@ Content-Type: application/json
 
 { "kind": "CONTACT", "id": 2 }
 
+### Consulter les candidatures de l'étudiant connecté
+GET http://localhost:3000/applications/me
+Authorization: {{student.response.body.token}}
+
 ### Candidater avec un message (offre publiée 5)
 POST http://localhost:3000/applications
 Authorization: {{student.response.body.token}}

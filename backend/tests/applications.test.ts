@@ -1,6 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
-import { ADMINISTRATOR, CONTACT, OFFER, STUDENT } from "../src/db/seed/seedIds.ts";
+import { ADMINISTRATOR, APPLICATION, CONTACT, OFFER, STUDENT } from "../src/db/seed/seedIds.ts";
 import type { Db } from "../src/db/database.ts";
 import { createTestApp, tokenFor } from "./helpers/testApp.ts";
 import { createTestDatabase } from "./helpers/testDatabase.ts";
@@ -18,6 +18,64 @@ const applyAs = (kind: "STUDENT" | "ADMIN" | "CONTACT", id: number, body: object
     .post("/applications")
     .set("Authorization", tokenFor(kind, id))
     .send(body);
+
+const listAs = (kind: "STUDENT" | "ADMIN" | "CONTACT", id: number) =>
+  request(app).get("/applications/me").set("Authorization", tokenFor(kind, id));
+
+describe("GET /applications/me : accès et isolation", () => {
+  it("refuse une requête sans session (401)", async () => {
+    const response = await request(app).get("/applications/me");
+
+    expect(response.status).toBe(401);
+  });
+
+  it.each([
+    ["administrateur", "ADMIN" as const, ADMINISTRATOR.ANNE_LECLERCQ],
+    ["contact déposant", "CONTACT" as const, CONTACT.MARC_LEJEUNE],
+  ])("refuse la consultation par un %s (403)", async (_profile, kind, id) => {
+    const response = await listAs(kind, id);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("retourne uniquement les candidatures de l'étudiant connecté", async () => {
+    const response = await listAs("STUDENT", STUDENT.INES_HADDAD);
+
+    expect(response.status).toBe(200);
+    expect(response.body.map((application: { id: number }) => application.id)).toEqual([
+      APPLICATION.INES_FLEET_APP,
+      APPLICATION.INES_BILLING_API,
+    ]);
+    expect(response.body.every((application: { offerTitle: string }) =>
+      typeof application.offerTitle === "string",
+    )).toBe(true);
+    expect(response.body[0]).toMatchObject({
+      offerId: OFFER.FLEET_APP,
+      offerTitle: "Application React de gestion de flotte",
+      companyShortName: "Lumen Digital",
+      academicYear: "2026-2027",
+      period: "P2",
+      status: "IN_PROGRESS",
+    });
+    expect(response.body[0]).not.toHaveProperty("studentId");
+  });
+
+  it("ne révèle pas les candidatures d'un autre étudiant", async () => {
+    const response = await listAs("STUDENT", STUDENT.YOUSSEF_EL_AMRANI);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0].id).toBe(APPLICATION.YOUSSEF_BILLING_API);
+  });
+
+  it("retourne une liste vide pour un étudiant sans candidature", async () => {
+    const response = await listAs("STUDENT", STUDENT.DMYTRO_KOVALENKO);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+});
 
 describe("POST /applications : accès", () => {
   it("refuse une requête sans session (401)", async () => {

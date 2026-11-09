@@ -1,9 +1,9 @@
-import { toApplication } from "../mappers/application.mapper.ts";
-import type { Application } from "../models/application.ts";
+import { toApplication, toApplicationListItem } from "../mappers/application.mapper.ts";
+import type { Application, ApplicationListItem } from "../models/application.ts";
 import type { User } from "../models/user.ts";
 import type { ApplicationsRepository } from "../repositories/applications.repository.ts";
 import { HttpError } from "../utils/httpError.ts";
-import { canApplyToOffers } from "./permissions.ts";
+import { canApplyToOffers, canViewOwnApplications } from "./permissions.ts";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
@@ -14,6 +14,13 @@ const isUniqueConstraintError = (error: unknown): boolean =>
   error.code === "SQLITE_CONSTRAINT_UNIQUE";
 
 export const createApplicationsService = (repository: ApplicationsRepository) => ({
+  listOwnApplications: (student: User): ApplicationListItem[] => {
+    if (!canViewOwnApplications(student)) {
+      throw new HttpError(403, "FORBIDDEN", "Seul un étudiant peut consulter ses candidatures");
+    }
+    return repository.findAllForStudent(student.id).map(toApplicationListItem);
+  },
+
   applyToOffer: (student: User, offerId: number, message?: string): Application => {
     if (!canApplyToOffers(student)) {
       throw new HttpError(403, "FORBIDDEN", "Seul un étudiant peut candidater");
