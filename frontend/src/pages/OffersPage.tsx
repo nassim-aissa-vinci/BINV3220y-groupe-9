@@ -1,14 +1,12 @@
 import { useState } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import EmptyState from "../components/EmptyState.tsx";
 import ErrorState from "../components/ErrorState.tsx";
 import LoadingState from "../components/LoadingState.tsx";
 import OfferTable from "../components/OfferTable.tsx";
+import { useApplyToOffer } from "../hooks/useApplyToOffer.ts";
 import { useOffers } from "../hooks/useOffers.ts";
-import type { Offer } from "../models/offer.ts";
-import type { PeriodCode } from "../models/offer.ts";
-import { createApplication } from "../services/applications.service.ts";
-import { isUnauthorized } from "../utils/api.ts";
+import type { Offer, PeriodCode } from "../models/offer.ts";
 import { isPeriodCode } from "../utils/guards.ts";
 import type { User } from "../models/user.ts";
 
@@ -26,12 +24,19 @@ const DESCRIPTIONS = {
 
 const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
   const [period, setPeriod] = useState<PeriodCode | undefined>();
-  const [selectedOfferId, setSelectedOfferId] = useState<number | null>(null);
-  const [message, setMessage] = useState("");
-  const [applicationError, setApplicationError] = useState<string | null>(null);
-  const [applicationNotice, setApplicationNotice] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { offers, isLoading, error } = useOffers(token, onUnauthorized, period);
+  const application = useApplyToOffer(token, onUnauthorized, user.kind === "STUDENT");
+  const {
+    selectedOfferId,
+    message,
+    error: applicationError,
+    notice: applicationNotice,
+    isSubmitting,
+    selectOffer,
+    setMessage,
+    submitApplication,
+    cancelApplication,
+  } = application;
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId);
 
   const handlePeriodChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -39,33 +44,11 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
     setPeriod(isPeriodCode(value) ? value : undefined);
   };
 
-  const handleApply = (offer: Offer) => {
-    setSelectedOfferId(offer.id);
-    setMessage("");
-    setApplicationError(null);
-    setApplicationNotice(null);
-  };
+  const handleApply = (offer: Offer) => selectOffer(offer.id);
 
-  const handleSubmitApplication = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitApplication = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (user.kind !== "STUDENT" || selectedOffer?.status !== "PUBLISHED") return;
-
-    setIsSubmitting(true);
-    setApplicationError(null);
-    try {
-      await createApplication(token, selectedOffer.id, message);
-      setSelectedOfferId(null);
-      setMessage("");
-      setApplicationNotice("Votre candidature a été envoyée.");
-    } catch (reason) {
-      if (isUnauthorized(reason)) {
-        onUnauthorized();
-      } else {
-        setApplicationError(reason instanceof Error ? reason.message : "Erreur inconnue");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+    void submitApplication(selectedOffer);
   };
 
   const renderContent = () => {
@@ -95,7 +78,7 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
             <button
               className="button"
               type="button"
-              onClick={() => setSelectedOfferId(null)}
+              onClick={cancelApplication}
               disabled={isSubmitting}
             >
               Annuler
