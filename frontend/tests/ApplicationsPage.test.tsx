@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ApplicationsPage from "../src/pages/ApplicationsPage.tsx";
 import { stubFetch } from "./helpers/fetchMock.ts";
@@ -96,5 +96,48 @@ describe("ApplicationsPage", () => {
     render(<ApplicationsPage token="jeton" onUnauthorized={onUnauthorized} />);
 
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
+  });
+
+  it("retire une candidature en cours et conserve sa ligne dans l'historique", async () => {
+    const fetchMock = stubFetch({
+      "/api/applications/1/withdraw": () =>
+        Response.json({
+          id: 1,
+          offerId: 1,
+          message: "Le développement React m'intéresse particulièrement.",
+          status: "WITHDRAWN",
+          appliedAt: "2026-10-02 18:10:00",
+        }),
+      "/api/applications/me": () => Response.json(applications),
+    });
+
+    render(<ApplicationsPage token="jeton" onUnauthorized={vi.fn()} />);
+
+    const row = await screen.findByRole("row", { name: /Application React de gestion de flotte/ });
+    expect(screen.getAllByRole("button", { name: "Retirer" })).toHaveLength(1);
+    fireEvent.click(within(row).getByRole("button", { name: "Retirer" }));
+
+    expect(await within(row).findByText("Retirée")).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Retirer" })).not.toBeInTheDocument();
+    const call = fetchMock.mock.calls.find(([url]) => url === "/api/applications/1/withdraw");
+    expect(call?.[1]).toMatchObject({
+      method: "PATCH",
+      headers: { Authorization: "jeton" },
+    });
+  });
+
+  it("affiche une erreur 409 et conserve l'action de retrait", async () => {
+    stubFetch({
+      "/api/applications/1/withdraw": () => new Response(null, { status: 409 }),
+      "/api/applications/me": () => Response.json(applications),
+    });
+
+    render(<ApplicationsPage token="jeton" onUnauthorized={vi.fn()} />);
+
+    const row = await screen.findByRole("row", { name: /Application React de gestion de flotte/ });
+    fireEvent.click(within(row).getByRole("button", { name: "Retirer" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("statut 409");
+    expect(within(row).getByRole("button", { name: "Retirer" })).toBeInTheDocument();
   });
 });

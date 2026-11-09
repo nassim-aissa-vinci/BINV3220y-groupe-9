@@ -202,6 +202,7 @@ sont supprimés, une valeur vide devient `null`, et le texte normalisé ne peut 
 - `400` `INVALID_BODY` : corps invalide ou message de plus de 1000 caractères
 - `401` `UNAUTHENTICATED` : session absente ou invalide
 - `403` `FORBIDDEN` : utilisateur connecté qui n'est pas étudiant
+
 - `404` `NOT_FOUND` : offre inexistante
 - `409` `OFFER_NOT_PUBLISHED` : offre existante dont le statut n'est pas `PUBLISHED`
 - `409` `APPLICATION_EXISTS` : candidature déjà présente pour cet étudiant et cette offre
@@ -244,3 +245,25 @@ par défaut sur l'année en cours (EF-72) reste à implémenter.
 
 - `401` `UNAUTHENTICATED` : session absente ou invalide
 - `403` `FORBIDDEN` : utilisateur connecté qui n'est pas étudiant
+
+## PATCH /applications/:applicationId/withdraw
+
+Retire la candidature de l'étudiant connecté en passant son statut à `WITHDRAWN`. La ligne
+est conservée dans l'historique. Seule une candidature `IN_PROGRESS` peut être retirée.
+L'appartenance est vérifiée à partir de la session, sans identifiant étudiant fourni par
+le client.
+
+### Requête
+
+- Header `Authorization` obligatoire
+- `applicationId` : identifiant entier positif de la candidature
+- Aucun corps
+
+### Réponses
+
+- `200` : candidature mise à jour, au format de la réponse `POST /applications`
+- `400` `INVALID_QUERY` : identifiant invalide
+- `401` `UNAUTHENTICATED` : session absente ou invalide
+- `403` `FORBIDDEN` : utilisateur connecté qui n'est pas étudiant
+- `404` `NOT_FOUND` : candidature inexistante ou appartenant à un autre étudiant
+- `409` `APPLICATION_NOT_WITHDRAWABLE` : candidature dont le statut n'est pas `IN_PROGRESS`

@@ -26,6 +26,13 @@ Content-Type: application/json
 
 { "kind": "CONTACT", "id": 2 }
 
+### Connexion de démo : étudiant Mateusz (candidature déjà retenue)
+# @name selectedStudent
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "STUDENT", "id": 3 }
+
 ### Consulter les candidatures de l'étudiant connecté
 GET http://localhost:3000/applications/me
 Authorization: {{student.response.body.token}}
@@ -71,3 +78,19 @@ Authorization: {{depositor.response.body.token}}
 Content-Type: application/json
 
 { "offerId": 5 }
+
+### Retrait OK : Lucas retire sa candidature en cours (id 1)
+PATCH http://localhost:3000/applications/1/withdraw
+Authorization: {{student.response.body.token}}
+
+### Erreur 409 : Mateusz tente de retirer sa candidature déjà retenue (id 3)
+PATCH http://localhost:3000/applications/3/withdraw
+Authorization: {{selectedStudent.response.body.token}}
+
+### Erreur 404 : Lucas tente de retirer la candidature d'Inès (id 2)
+PATCH http://localhost:3000/applications/2/withdraw
+Authorization: {{student.response.body.token}}
+
+### Erreur 403 : retrait par une administratrice
+PATCH http://localhost:3000/applications/1/withdraw
+Authorization: {{admin.response.body.token}}

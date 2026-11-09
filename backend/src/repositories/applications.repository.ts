@@ -29,6 +29,18 @@ export const createApplicationsRepository = (db: Db) => {
     SELECT id, offer_id, student_id, message, status, applied_at
     FROM applications WHERE id = @id
   `);
+  const findByIdForStudent = db.prepare<
+    { id: number; studentId: number },
+    ApplicationDbo
+  >(`
+    SELECT id, offer_id, student_id, message, status, applied_at
+    FROM applications
+    WHERE id = @id AND student_id = @studentId
+  `);
+  const withdrawInProgress = db.prepare<{ id: number; studentId: number }>(`
+    UPDATE applications SET status = 'WITHDRAWN'
+    WHERE id = @id AND student_id = @studentId AND status = 'IN_PROGRESS'
+  `);
   const findByStudentId = db.prepare<{ studentId: number }, ApplicationListDbo>(`
     SELECT a.id, a.offer_id, a.student_id, a.message, a.status, a.applied_at,
            o.title AS offer_title, c.short_name AS company_short_name,
@@ -49,6 +61,10 @@ export const createApplicationsRepository = (db: Db) => {
       findActive.get({ offerId, studentId }) !== undefined,
     findAllForStudent: (studentId: number): ApplicationListDbo[] =>
       findByStudentId.all({ studentId }),
+    findByIdForStudent: (id: number, studentId: number): ApplicationDbo | undefined =>
+      findByIdForStudent.get({ id, studentId }),
+    withdrawIfInProgress: (id: number, studentId: number): boolean =>
+      withdrawInProgress.run({ id, studentId }).changes === 1,
     create: (params: ApplicationParams): ApplicationDbo => {
       const result = insertApplication.run(params);
       const application = findById.get({ id: Number(result.lastInsertRowid) });

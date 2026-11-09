@@ -11,7 +11,14 @@ interface ApplicationsPageProps {
 }
 
 const ApplicationsPage = ({ token, onUnauthorized }: ApplicationsPageProps) => {
-  const { applications, isLoading, error } = useApplications(token, onUnauthorized);
+  const {
+    applications,
+    isLoading,
+    error,
+    withdrawalError,
+    withdrawingId,
+    withdrawApplication,
+  } = useApplications(token, onUnauthorized);
 
   if (error) return <ErrorState message={error} />;
   if (isLoading) return <LoadingState />;
@@ -30,6 +37,7 @@ const ApplicationsPage = ({ token, onUnauthorized }: ApplicationsPageProps) => {
       <p className="result-count">
         {applications.length} candidature{applications.length > 1 ? "s" : ""}
       </p>
+      {withdrawalError && <ErrorState message={withdrawalError} />}
       <div className="table-wrapper">
         <table className="data-table">
           <thead>
@@ -41,6 +49,7 @@ const ApplicationsPage = ({ token, onUnauthorized }: ApplicationsPageProps) => {
               <th scope="col">Date</th>
               <th scope="col">Message</th>
               <th scope="col">Statut</th>
+              <th scope="col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -59,6 +68,18 @@ const ApplicationsPage = ({ token, onUnauthorized }: ApplicationsPageProps) => {
                     label={APPLICATION_STATUS_LABELS[application.status]}
                     tone={APPLICATION_STATUS_TONES[application.status]}
                   />
+                </td>
+                <td>
+                  {application.status === "IN_PROGRESS" && (
+                    <button
+                      className="button"
+                      type="button"
+                      disabled={withdrawingId !== null}
+                      onClick={() => void withdrawApplication(application.id)}
+                    >
+                      {withdrawingId === application.id ? "Retrait…" : "Retirer"}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
