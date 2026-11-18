@@ -8,10 +8,27 @@ import { createTestDatabase } from "./helpers/testDatabase.ts";
 let db: Db;
 let app: ReturnType<typeof createTestApp>;
 
+type ApplicationSnapshot = {
+  id: number;
+  offer_id: number;
+  student_id: number;
+  message: string | null;
+  status: string;
+  applied_at: string;
+};
+
 beforeEach(() => {
   db = createTestDatabase();
   app = createTestApp(db);
 });
+
+const applicationsSnapshot = (): ApplicationSnapshot[] =>
+  db
+    .prepare(
+      `SELECT id, offer_id, student_id, message, status, applied_at
+       FROM applications ORDER BY id`,
+    )
+    .all() as ApplicationSnapshot[];
 
 const applyAs = (kind: "STUDENT" | "ADMIN" | "CONTACT", id: number, body: object) =>
   request(app)
@@ -76,13 +93,16 @@ describe("PATCH /applications/:applicationId/withdraw", () => {
     ["non retenue", STUDENT.LEA_MERTENS, APPLICATION.LEA_CLOUD_MIGRATION],
     ["déjà retirée", STUDENT.INES_HADDAD, APPLICATION.INES_BILLING_API],
   ] as const)("refuse le retrait d'une candidature %s (409)", async (_status, studentId, applicationId) => {
+    const before = applicationsSnapshot();
     const response = await withdrawAs("STUDENT", studentId, applicationId);
 
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe("APPLICATION_NOT_WITHDRAWABLE");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it("renvoie 404 si la candidature appartient à un autre étudiant", async () => {
+    const before = applicationsSnapshot();
     const response = await withdrawAs(
       "STUDENT",
       STUDENT.LUCAS_DUPONT,
@@ -91,51 +111,74 @@ describe("PATCH /applications/:applicationId/withdraw", () => {
 
     expect(response.status).toBe(404);
     expect(response.body.error.code).toBe("NOT_FOUND");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it("renvoie 404 si la candidature n'existe pas", async () => {
+    const before = applicationsSnapshot();
     const response = await withdrawAs("STUDENT", STUDENT.LUCAS_DUPONT, 999);
 
     expect(response.status).toBe(404);
     expect(response.body.error.code).toBe("NOT_FOUND");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
-  it("refuse le retrait par un administrateur (403)", async () => {
-    const response = await withdrawAs(
-      "ADMIN",
-      ADMINISTRATOR.ANNE_LECLERCQ,
-      APPLICATION.LUCAS_FLEET_APP,
-    );
+  it.each([
+    ["administrateur", "ADMIN" as const, ADMINISTRATOR.ANNE_LECLERCQ],
+    ["contact déposant", "CONTACT" as const, CONTACT.MARC_LEJEUNE],
+    ["contact promoteur", "CONTACT" as const, CONTACT.NADIA_CHERIF],
+  ])("refuse le retrait par un %s (403)", async (_profile, kind, id) => {
+    const before = applicationsSnapshot();
+    const response = await withdrawAs(kind, id, APPLICATION.LUCAS_FLEET_APP);
 
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe("FORBIDDEN");
+    expect(applicationsSnapshot()).toEqual(before);
+  });
+
+  it("refuse le retrait sans session (401)", async () => {
+    const before = applicationsSnapshot();
+    const response = await request(app).patch(
+      `/applications/${APPLICATION.LUCAS_FLEET_APP}/withdraw`,
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it("rejette un identifiant invalide (400)", async () => {
+    const before = applicationsSnapshot();
     const response = await request(app)
       .patch("/applications/0/withdraw")
       .set("Authorization", tokenFor("STUDENT", STUDENT.LUCAS_DUPONT));
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_QUERY");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 });
 
 describe("GET /applications/me : accès et isolation", () => {
   it("refuse une requête sans session (401)", async () => {
+    const before = applicationsSnapshot();
     const response = await request(app).get("/applications/me");
 
     expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it.each([
     ["administrateur", "ADMIN" as const, ADMINISTRATOR.ANNE_LECLERCQ],
     ["contact déposant", "CONTACT" as const, CONTACT.MARC_LEJEUNE],
   ])("refuse la consultation par un %s (403)", async (_profile, kind, id) => {
+    const before = applicationsSnapshot();
     const response = await listAs(kind, id);
 
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe("FORBIDDEN");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it("retourne uniquement les candidatures de l'étudiant connecté", async () => {
@@ -195,19 +238,25 @@ describe("GET /applications/me : accès et isolation", () => {
 
 describe("POST /applications : accès", () => {
   it("refuse une requête sans session (401)", async () => {
+    const before = applicationsSnapshot();
     const response = await request(app).post("/applications").send({ offerId: OFFER.DATA_QUALITY });
 
     expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it.each([
     ["administrateur", "ADMIN" as const, ADMINISTRATOR.ANNE_LECLERCQ],
     ["contact déposant", "CONTACT" as const, CONTACT.MARC_LEJEUNE],
+    ["contact promoteur", "CONTACT" as const, CONTACT.NADIA_CHERIF],
   ])("refuse une candidature par %s (403)", async (_profile, kind, id) => {
+    const before = applicationsSnapshot();
     const response = await applyAs(kind, id, { offerId: OFFER.DATA_QUALITY });
 
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe("FORBIDDEN");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 });
 
@@ -256,6 +305,7 @@ describe("POST /applications : création", () => {
   });
 
   it("rejette un message normalisé de plus de 1000 caractères", async () => {
+    const before = applicationsSnapshot();
     const response = await applyAs("STUDENT", STUDENT.LOUIS_CLAES, {
       offerId: OFFER.DATA_QUALITY,
       message: "x".repeat(1001),
@@ -263,6 +313,7 @@ describe("POST /applications : création", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_BODY");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it("dérive l'étudiant de la session et ignore tout studentId fourni", async () => {
@@ -281,6 +332,7 @@ describe("POST /applications : création", () => {
 
 describe("POST /applications : refus", () => {
   it("rejette un corps invalide", async () => {
+    const before = applicationsSnapshot();
     const response = await applyAs("STUDENT", STUDENT.LOUIS_CLAES, {
       offerId: 0,
       message: 12,
@@ -288,22 +340,30 @@ describe("POST /applications : refus", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_BODY");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it("renvoie 404 pour une offre inexistante", async () => {
+    const before = applicationsSnapshot();
     const response = await applyAs("STUDENT", STUDENT.LOUIS_CLAES, { offerId: 999 });
 
     expect(response.status).toBe(404);
     expect(response.body.error.code).toBe("NOT_FOUND");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
-  it("refuse une offre existante qui n'est pas publiée (409)", async () => {
-    const response = await applyAs("STUDENT", STUDENT.LOUIS_CLAES, {
-      offerId: OFFER.CLIENT_PORTAL,
-    });
+  it.each([
+    ["soumise", OFFER.CLIENT_PORTAL],
+    ["en attente", OFFER.E2E_TESTS],
+    ["attribuée", OFFER.CLOUD_MIGRATION],
+    ["archivée", OFFER.PDF_REPORTS],
+  ] as const)("refuse une candidature à une offre %s (409)", async (_status, offerId) => {
+    const before = applicationsSnapshot();
+    const response = await applyAs("STUDENT", STUDENT.LOUIS_CLAES, { offerId });
 
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe("OFFER_NOT_PUBLISHED");
+    expect(applicationsSnapshot()).toEqual(before);
   });
 
   it.each(["IN_PROGRESS", "SELECTED", "REJECTED"] as const)(
@@ -316,11 +376,13 @@ describe("POST /applications : refus", () => {
       }
       const offerId = status === "IN_PROGRESS" ? OFFER.FLEET_APP : OFFER.DATA_QUALITY;
       const studentId = status === "IN_PROGRESS" ? STUDENT.LUCAS_DUPONT : STUDENT.DMYTRO_KOVALENKO;
+      const before = applicationsSnapshot();
 
       const response = await applyAs("STUDENT", studentId, { offerId });
 
       expect(response.status).toBe(409);
       expect(response.body.error.code).toBe("APPLICATION_EXISTS");
+      expect(applicationsSnapshot()).toEqual(before);
     },
   );
 
