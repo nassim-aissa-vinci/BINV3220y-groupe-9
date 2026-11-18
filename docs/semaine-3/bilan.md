@@ -1,4 +1,4 @@
-# Bilan — Séance 3 : guides, senseurs et traçabilité des tests
+# Bilan — Séance 8 (semaine 3)
 
 ## Inventaire
 
@@ -19,7 +19,10 @@ pendant cette séance.
 
 La [matrice de traçabilité](matrice-tracabilite-tests.md) confronte EF-32, EF-33 et
 RG-03 aux tests backend et frontend, sans confondre les fixtures, contraintes SQL,
-parcours de catalogue et véritables tests des routes de candidature.
+parcours de catalogue et véritables tests des routes de candidature. Elle compare
+l'avant et l'après renforcement : sur 43 cas déclinés, les classements passent de
+5 Couvert / 26 Partiel / 12 Absent à 31 Couvert / 7 Partiel / 5 Absent. Les cas qui
+restent partiels ou absents y sont détaillés.
 
 Les cas principaux existent : candidature avec ou sans message, retrait en cours,
 historique conservé, recandidature après retrait, isolation à la lecture, affichage
