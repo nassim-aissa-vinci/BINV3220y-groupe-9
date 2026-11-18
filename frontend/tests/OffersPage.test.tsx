@@ -82,6 +82,47 @@ describe("OffersPage", () => {
     expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(`/api/offers?period=${queryValue}`);
   });
 
+  it("recherche le titre après suppression des espaces et combine les filtres", async () => {
+    const fetchMock = stubFetch({
+      "/api/offers?period=P2&q=API": () => Response.json([publishedOffer]),
+      "/api/offers?period=P2": () => Response.json([p2Offer]),
+      "/api/offers": () => Response.json(offers),
+    });
+
+    render(<OffersPage user={contactUser} token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("3 offres");
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Période" }), {
+      target: { value: "P2" },
+    });
+    expect(await screen.findByText("1 offre")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Mot-clé dans le titre" }), {
+      target: { value: "  API  " },
+    });
+
+    expect(await screen.findByText("API de test publiée")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("/api/offers?period=P2&q=API");
+  });
+
+  it("affiche un message adapté quand aucun titre ne correspond", async () => {
+    stubFetch({
+      "/api/offers?q=introuvable": () => Response.json([]),
+      "/api/offers": () => Response.json(offers),
+    });
+
+    render(<OffersPage user={contactUser} token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("3 offres");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Mot-clé dans le titre" }), {
+      target: { value: "introuvable" },
+    });
+
+    expect(
+      await screen.findByText("Aucune offre ne correspond à votre recherche."),
+    ).toBeInTheDocument();
+  });
+
   it("adapte la description au profil", async () => {
     stubFetch({ "/api/offers": () => Response.json([]) });
 

@@ -203,6 +203,23 @@ describe("GET /applications/me : accès et isolation", () => {
     expect(response.body[0]).not.toHaveProperty("studentId");
   });
 
+  it("départage les candidatures de même date par identifiant décroissant", async () => {
+    const insert = db.prepare(
+      "INSERT INTO applications (offer_id, student_id, applied_at) VALUES (?, ?, ?)",
+    );
+    const appliedAt = "2026-10-10 12:00:00";
+    const first = insert.run(OFFER.DATA_QUALITY, STUDENT.DMYTRO_KOVALENKO, appliedAt);
+    const second = insert.run(OFFER.INTERNAL_CHATBOT, STUDENT.DMYTRO_KOVALENKO, appliedAt);
+
+    const response = await listAs("STUDENT", STUDENT.DMYTRO_KOVALENKO);
+
+    expect(response.status).toBe(200);
+    expect(response.body.map((application: { id: number }) => application.id)).toEqual([
+      Number(second.lastInsertRowid),
+      Number(first.lastInsertRowid),
+    ]);
+  });
+
   it("ne révèle pas les candidatures d'un autre étudiant", async () => {
     const response = await listAs("STUDENT", STUDENT.YOUSSEF_EL_AMRANI);
 

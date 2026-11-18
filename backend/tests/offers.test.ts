@@ -10,10 +10,15 @@ beforeEach(() => {
   app = createTestApp();
 });
 
-const listOffersAs = (kind: UserKind, id: number, period?: string) =>
-  request(app)
-    .get(period === undefined ? "/offers" : `/offers?period=${encodeURIComponent(period)}`)
+const listOffersAs = (kind: UserKind, id: number, period?: string, q?: string) => {
+  const query = new URLSearchParams();
+  if (period !== undefined) query.set("period", period);
+  if (q !== undefined) query.set("q", q);
+  const queryString = query.toString();
+  return request(app)
+    .get(queryString === "" ? "/offers" : `/offers?${queryString}`)
     .set("Authorization", tokenFor(kind, id));
+};
 
 const offerIds = (body: { id: number }[]): number[] => body.map((offer) => offer.id);
 
@@ -82,6 +87,74 @@ describe("GET /offers : filtre par période", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_QUERY");
+  });
+});
+
+describe("GET /offers : recherche par titre", () => {
+  it("ignore la casse et les espaces extérieurs de la recherche", async () => {
+    const response = await listOffersAs(
+      "ADMIN",
+      ADMINISTRATOR.ANNE_LECLERCQ,
+      undefined,
+      "  aPi ReSt  ",
+    );
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.BILLING_API]);
+  });
+
+  it("recherche l'expression entière dans le titre", async () => {
+    const response = await listOffersAs(
+      "ADMIN",
+      ADMINISTRATOR.ANNE_LECLERCQ,
+      undefined,
+      "API facturation",
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
+  it("retourne les offres normalement visibles lorsque la recherche est vide", async () => {
+    const response = await listOffersAs("STUDENT", STUDENT.LUCAS_DUPONT, undefined, "   ");
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([
+      OFFER.INTERNAL_CHATBOT,
+      OFFER.DATA_QUALITY,
+      OFFER.FLEET_APP,
+      OFFER.BILLING_API,
+    ]);
+    expect(response.body.every((offer: { status: string }) => offer.status === "PUBLISHED")).toBe(
+      true,
+    );
+  });
+
+  it("combine la recherche par titre et la période sans exposer les offres non publiées", async () => {
+    const response = await listOffersAs(
+      "STUDENT",
+      STUDENT.LUCAS_DUPONT,
+      "P2",
+      "API",
+    );
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.BILLING_API]);
+    expect(response.body.every((offer: { status: string; period: string }) =>
+      offer.status === "PUBLISHED" && offer.period === "P2",
+    )).toBe(true);
+  });
+
+  it("retourne une liste vide sans correspondance", async () => {
+    const response = await listOffersAs(
+      "ADMIN",
+      ADMINISTRATOR.ANNE_LECLERCQ,
+      undefined,
+      "titre introuvable",
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
   });
 });
 
