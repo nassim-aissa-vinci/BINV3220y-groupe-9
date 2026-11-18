@@ -75,3 +75,9 @@ use Vitest, jsdom, and Testing Library. Never point tests at the local developme
   English, with French labels presented by the frontend.
 - The demo-login mode is for local development only and is rejected in production. Do not
   describe or extend it as real authentication.
+
+Pour tout ajout de fonctionnalité ou correction de bug, lis et applique
+.github/skills/test-driven-development/SKILL.md avant de modifier le code
+de l'application. Écris et exécute les tests d'abord, présente-les, puis attends
+leur validation explicite avant l'implémentation. Cette règle ne concerne pas les
+demandes d'explication ou de documentation seules.
