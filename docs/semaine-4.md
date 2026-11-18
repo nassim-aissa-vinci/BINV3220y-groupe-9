@@ -46,16 +46,17 @@ recherchée comme une expression entière. Une recherche vide ne restreint pas l
 Le filtre se combine avec la période et conserve les règles de visibilité, dont les
 offres publiées uniquement pour les étudiants.
 
-- Essais dans le navigateur : **non essayé dans le navigateur**.
-- Tests frontend lancés par moi : **non lancés**, conformément à la consigne. Le résultat
-  de `npm run test -w frontend` lancé par l'utilisateur est **non vérifié**.
-- `npm run check` lancé par moi : **non lancé** ; son résultat est **non vérifié**.
-- Vérifications distinctes lancées par moi : suite backend **153 tests réussis** ;
-  typecheck backend et frontend, lint et build **réussis**.
+- Essais dans le navigateur : **non essayé**.
+- `npm run check` lancé par toi : **réussi** — lint backend et frontend avec 0 avertissement
+  et 0 erreur, typecheck réussi, tests backend 160/160, tests frontend 69/69 et build réussi.
+- Détail des tests backend : `offers.test.ts` 22/22 et `applications.test.ts` 39/39.
+- Les tests frontend comprennent « recherche le titre après suppression des espaces et
+  combine les filtres » et « affiche un message adapté quand aucun titre ne correspond ».
 
 Problèmes restants : la recherche approximative et la gestion des accents sont hors
-périmètre. Le comportement dans un navigateur et les tests frontend ne sont pas vérifiés
-ici.
+périmètre. La limite de 100 caractères et le refus d'un paramètre `q` répété (400) ont
+été ajoutés sans validation et ne sont pas testés. Le comportement dans un navigateur
+n'a pas été vérifié.
 
 ## 4. Hook Tool Guardian
 
