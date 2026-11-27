@@ -1,3 +1,5 @@
+Conversation : [Claude Code — séance 10](./semaine-5/conversation-claude-code.md)
+
 # Bilan de la séance 10 — MCP et tests end-to-end avec Playwright
 
 Fonctionnalité vérifiée : recherche d'offres par titre (EF-30), développée à la séance 9
@@ -28,7 +30,8 @@ Justification du choix :
 Serveur lancé à la racine : `npx -y @playwright/mcp@latest --port 8931` (sans l'option
 `--isolated` demandée), déclaré dans [.mcp.json](../.mcp.json) en `http` sur
 `http://localhost:8931/mcp`. Backend (`:3000`) et frontend (`:5173`) lancés avec `npm run dev`.
-Agent utilisé : Claude Code, qui a appelé les outils du serveur Playwright MCP.
+Agent utilisé : Claude Code à la place de GitHub Copilot (autorisé par l'enseignant), qui a
+appelé les outils du serveur Playwright MCP.
 
 **Scénario exécuté : 1 — réussi, aucun écart.** Après saisie de `application`, la page affichait
 « 1 offre » et une seule ligne « Application React de gestion de flotte / Lumen Digital /
@@ -124,8 +127,8 @@ Défaut temporaire dans `backend/src/repositories/offers.repository.ts` : le fil
 
 ## Limites et points ouverts
 
-- L'exploration MCP a été faite avec Claude Code, et non avec GitHub Copilot comme demandé ; le
-  serveur a été lancé sans `--isolated`.
+- Le serveur MCP a été lancé sans l'option `--isolated` : le profil du navigateur n'était pas
+  isolé (sans conséquence ici, l'application utilise une connexion de démonstration).
 - Seul le scénario 1 a été exécuté par MCP ; les deux scénarios sont couverts par Playwright Test.
 - Observation hors scénario : le bouton « Candidater » est affiché sur l'offre flotte alors que
   le seed contient une candidature en cours de Lucas sur cette offre. Non analysé.
